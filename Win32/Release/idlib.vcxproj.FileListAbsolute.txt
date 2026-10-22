@@ -1,1 +1,0 @@
-C:\Users\Shaun\Git\Win32\Release\idLib.lib
