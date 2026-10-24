@@ -12,6 +12,9 @@ const float PM_SWIMSCALE		= 0.5f;
 const float PM_LADDERSPEED		= 100.0f;
 const float PM_STEPSCALE		= 1.0f;
 
+//mod code
+float temperature = 20.0f;
+
 const float PM_ACCELERATE_SP	= 10.0f;
 const float PM_AIRACCELERATE_SP	= 1.0f;
 const float PM_ACCELERATE_MP	= 15.0f;
