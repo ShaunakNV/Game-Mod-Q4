@@ -1525,6 +1525,9 @@ void idPlayer::Init( void ) {
 	centerView.Init( 0, 0, 0, 0 );
 	fxFov					= false;
 
+	//unfreeze mod variable
+	unfreezeCount = 0;
+
 	influenceFov			= 0;
 	influenceActive			= 0;
 	influenceRadius			= 0.0f;
@@ -3400,6 +3403,16 @@ void idPlayer::UpdateHudStats( idUserInterface *_hud ) {
 		_hud->SetStateFloat	( "player_healthpct", idMath::ClampFloat ( 0.0f, 1.0f, (float)health / (float)inventory.maxHealth ) );
 		_hud->HandleNamedEvent ( "updateHealth" );
 	}
+
+
+	//gameLocal.Printf("HUD temperature %d\n", (int)physicsObj.GetTemperature());
+	temp = _hud->State().GetInt("player_temperature", "-1");
+	if (temp != physicsObj.GetTemperature()) {
+		_hud->SetStateInt("player_temperatureDelta", temp == -1 ? 0 : (temp - physicsObj.GetTemperature()));
+		_hud->SetStateInt("player_temperature", (int)physicsObj.GetTemperature() < -100 ? -100 : physicsObj.GetTemperature());
+		_hud->SetStateFloat("player_temperaturepct", idMath::ClampFloat(0.0f, 1.0f, physicsObj.GetTemperature()/100.0f));
+		_hud->HandleNamedEvent("updateTemperature");
+	}
 		
 	temp = _hud->State().GetInt ( "player_armor", "-1" );
 	if ( temp != inventory.armor ) {
@@ -3919,9 +3932,54 @@ void idPlayer::UpdateConditions( void ) {
    	}
 
 	pfl.run		= 1;
+
+	//mod code, increment/decrement temperature
+
+	//gameLocal.Printf("Player Temperature Code %.1f\n", physicsObj.GetTemperature());
+
+	float dt = (gameLocal.time - gameLocal.previousTime) / 1000.0f;
+	idVec3 modVelocity = physicsObj.GetLinearVelocity();
+
+	if (!modVelocity.IsZero() && ((usercmd.forwardmove != 0) || (usercmd.rightmove != 0))) {
+		physicsObj.SetTemperature( physicsObj.GetTemperature() + dt );
+	}
+	else {
+		physicsObj.SetTemperature( physicsObj.GetTemperature() - dt );
+	}
+	physicsObj.SetTemperature( idMath::ClampFloat(0.0f, 100.0f, physicsObj.GetTemperature()));
+
+
+	gameLocal.Printf("player.cpp impact test %.1f\n", physicsObj.GetwallImpactSpeed());
+	float impact = physicsObj.GetwallImpactSpeed();
+	physicsObj.SetwallImpactSpeed(0.0f);
+	float floatdmg = 0;
+	if (impact > 400.0f) {
+		floatdmg = ((impact - 400.0f) * 0.25f);
+		gameLocal.Printf("player.cpp float damage test %.1f\n", floatdmg);
+		int dmg = (int)floatdmg;
+		gameLocal.Printf("player.cpp int damage test %d\n", dmg);
+		if (dmg > 0) {
+//			health -= dmg;
+			Damage(NULL, NULL, idVec3(0, 0, 0), "damage_impact", (float)dmg, 0);
+			
+		}
+	}
+	
+
+
  	pfl.dead	= ( health <= 0 );
 }
 
+void idPlayer::unfreeze(void) {
+	if (physicsObj.GetTemperature() == 0) {
+		gameLocal.Printf("unfreeze count %d\n", unfreezeCount); 
+		unfreezeCount += 1;
+		if (unfreezeCount >= 125) {
+			physicsObj.SetTemperature(10.0f);
+			unfreezeCount = 0;
+		}
+	}
+}
 /*
 ==================
 idPlayer::WeaponFireFeedback
@@ -8566,6 +8624,10 @@ void idPlayer::PerformImpulse( int impulse ) {
    		}
 		case IMPULSE_40: {
 			idFuncRadioChatter::RepeatLast();
+			break;
+		}
+		case IMPULSEUNFREEZE: {
+			unfreeze();
 			break;
 		}
 

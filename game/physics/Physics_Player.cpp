@@ -8,6 +8,7 @@ END_CLASS
 
 //mod code
 float temperature = 20.0f;
+float wallImpactSpeed = 0.0f;
 
 // movement parameters
 
@@ -55,6 +56,21 @@ float idPhysics_Player::Pm_Accelerate( void ) {
 
 float idPhysics_Player::Pm_AirAccelerate( void ) {
 	return gameLocal.IsMultiplayer() ? PM_AIRACCELERATE_MP : PM_AIRACCELERATE_SP;
+}
+
+//mod temperature getter and setter
+void idPhysics_Player::SetTemperature(float temper){
+	temperature = temper;
+}
+float idPhysics_Player::GetTemperature() {
+	return temperature;
+}
+//mod wallspeed getter and setter
+void idPhysics_Player::SetwallImpactSpeed(float speed) {
+	wallImpactSpeed = speed;
+}
+float idPhysics_Player::GetwallImpactSpeed() {
+	return wallImpactSpeed;
 }
 
 /*
@@ -220,6 +236,13 @@ bool idPhysics_Player::SlideMove( bool gravity, bool stepUp, bool stepDown, bool
 		// if moved the entire distance
 		if ( trace.fraction >= 1.0f ) {
 			break;
+		} else {
+			float into = -(current.velocity * trace.c.normal);
+			float vert = idMath::Fabs(trace.c.normal * gravityNormal);
+			if (vert < 0.3f && into > wallImpactSpeed) {
+				wallImpactSpeed = into;
+			}
+			gameLocal.Printf("physics_player.cpp impact test %.1f\n", wallImpactSpeed);
 		}
 
 		stepped = pushed = false;

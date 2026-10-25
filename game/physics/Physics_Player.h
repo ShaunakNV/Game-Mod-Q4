@@ -119,6 +119,12 @@ public:	// common physics interface
 
 	void					SetClipModelNoLink( idClipModel *clip );
 
+	//mod getters and setters for temperature
+	void					SetTemperature(float temper);
+	float					GetTemperature( void );
+	void					SetwallImpactSpeed(float speed);
+	float					GetwallImpactSpeed(void);
+
 private:
 	// player physics state
 	playerPState_t			current;

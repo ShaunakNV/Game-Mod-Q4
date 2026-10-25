@@ -3022,6 +3022,19 @@ void Cmd_ShuffleTeams_f( const idCmdArgs& args ) {
 	gameLocal.mpGame.ShuffleTeams();
 }
 
+void Cmd_SetTemp_f(const idCmdArgs& args) {
+	idPlayer* player = gameLocal.GetLocalPlayer();
+	if (!player) {
+		return;
+	}
+	if (args.Argc() < 2) {
+		gameLocal.Printf("Set Temperature\n");
+		return;
+	}
+	idPhysics_Player* phys = static_cast<idPhysics_Player*>(player->GetPhysics());
+	phys->SetTemperature(atof(args.Argv(1)));
+}
+
 #ifndef _FINAL
 void Cmd_ClientOverflowReliable_f( const idCmdArgs& args ) {
 	idBitMsg	outMsg;
@@ -3053,6 +3066,7 @@ void idGameLocal::InitConsoleCommands( void ) {
 //	cmdSystem->AddCommand( "writeGameState",		WriteGameState_f,			CMD_FL_GAME,				"write game state" );
 //	cmdSystem->AddCommand( "testSaveGame",			TestSaveGame_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"test a save game for a level" );
 // RAVEN END
+	cmdSystem->AddCommand("settemp", Cmd_SetTemp_f, CMD_FL_GAME, "sets the player's temperature 0-100");
 	cmdSystem->AddCommand( "game_memory",			idClass::DisplayInfo_f,		CMD_FL_GAME,				"displays game class info" );
 	cmdSystem->AddCommand( "listClasses",			idClass::ListClasses_f,		CMD_FL_GAME,				"lists game classes" );
 	cmdSystem->AddCommand( "listThreads",			idThread::ListThreads_f,	CMD_FL_GAME|CMD_FL_CHEAT,	"lists script threads" );
