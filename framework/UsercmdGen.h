@@ -72,6 +72,13 @@ const int IMPULSE_28			= 28;			// vote yes
 const int IMPULSE_29			= 29;			// vote no
 const int IMPULSE_40			= 40;			// repeast last radio chatter
 const int IMPULSEUNFREEZE = 41;
+const int IMPULSE_42 = 42; //mouse 1
+const int IMPULSE_43 = 43; //mouse 2
+const int IMPULSE_44 = 44; //movement ability 1
+const int IMPULSE_45 = 45; //movement ability 2
+const int IMPULSE_46 = 46; //movement ability 3
+const int IMPULSE_47 = 47; //movement ability 4
+const int IMPULSE_48 = 48; //movement ability 5
 
 // RAVEN BEGIN
 // bdube: added flashlight

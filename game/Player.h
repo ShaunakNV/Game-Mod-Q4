@@ -472,6 +472,14 @@ public:
 
 	void					UpdateConditions( void );
 	void					unfreeze(void);
+	void					BasicMelee(void);
+	void					Backdash(void);
+	void					Lunge(void);
+	void					Sidedash(void);
+	void					Superjump(void);
+	void					leftClick(int abil);
+	void					rightClick(int abil);
+
 	void					SetViewAngles( const idAngles &angles );
 
 	void					BiasIntentDir			( idVec3 newIntentDir, float prevBias = 199.0f );
@@ -890,6 +898,7 @@ private:
 	idInterpolate<float>	centerView;
 	bool					fxFov;
 	int						unfreezeCount;
+	int						abilitySelect;
 
 	float					influenceFov;
 	int						influenceActive;		// level of influence.. 1 == no gun or hud .. 2 == 1 + no movement

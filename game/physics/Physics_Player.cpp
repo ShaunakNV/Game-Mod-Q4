@@ -242,7 +242,7 @@ bool idPhysics_Player::SlideMove( bool gravity, bool stepUp, bool stepDown, bool
 			if (vert < 0.3f && into > wallImpactSpeed) {
 				wallImpactSpeed = into;
 			}
-			gameLocal.Printf("physics_player.cpp impact test %.1f\n", wallImpactSpeed);
+			//gameLocal.Printf("physics_player.cpp impact test %.1f\n", wallImpactSpeed);
 		}
 
 		stepped = pushed = false;

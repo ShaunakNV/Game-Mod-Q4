@@ -1527,6 +1527,9 @@ void idPlayer::Init( void ) {
 
 	//unfreeze mod variable
 	unfreezeCount = 0;
+	//mod ability select variable
+	int abilitySelect = 1;
+
 
 	influenceFov			= 0;
 	influenceActive			= 0;
@@ -3980,6 +3983,100 @@ void idPlayer::unfreeze(void) {
 		}
 	}
 }
+
+void idPlayer::BasicMelee(void) {
+	
+}
+
+void idPlayer::Backdash(void) {
+	if (physicsObj.GetTemperature() > 20) {
+		idVec3 up = -physicsObj.GetGravityNormal();
+		idVec3 fwd = viewAxis[0] - up * (viewAxis[0] * up);
+		fwd.Normalize();
+
+		idVec3 vel = fwd * -800.0f + up * 150.0f;
+		physicsObj.SetLinearVelocity(vel);
+		physicsObj.SetTemperature(physicsObj.GetTemperature() - 20.0f);
+	} else {
+		physicsObj.SetTemperature(0);
+	}
+}
+
+void idPlayer::Lunge(void) {
+	if (physicsObj.GetTemperature() > 30) {
+		idVec3 up = -physicsObj.GetGravityNormal();
+		idVec3 fwd = viewAxis[0] - up * (viewAxis[0] * up);
+		fwd.Normalize();
+
+		idVec3 vel = fwd * 1000.0f + up * 150.0f;
+		physicsObj.SetLinearVelocity(vel);
+		physicsObj.SetTemperature(physicsObj.GetTemperature() - 30.0f);
+	} else {
+		physicsObj.SetTemperature(0);
+	}
+}
+
+void idPlayer::Sidedash(void) {
+
+	int direction = 0;
+	if (usercmd.rightmove < 0) {
+		direction = 1;
+	}
+	else if (usercmd.rightmove > 0) {
+		direction = -1;
+	}
+	if (direction == 0) {
+		return;
+	}
+
+	if (physicsObj.GetTemperature() > 30) {
+		idVec3 up = -physicsObj.GetGravityNormal();
+		idVec3 right = viewAxis[1] - up * (viewAxis[1] * up);
+		right.Normalize();
+
+		idVec3 vel = right * (float)direction * 1000.0f + up * 150.0f;
+		physicsObj.SetLinearVelocity(vel);
+		physicsObj.SetTemperature(physicsObj.GetTemperature() - 30.0f);
+	} else {
+		physicsObj.SetTemperature(0);
+	}
+}
+
+void idPlayer::Superjump(void) {
+	if (physicsObj.GetTemperature() > 30) {
+		idVec3 up = -physicsObj.GetGravityNormal();
+
+		idVec3 vel = up * 1000.0f;
+		physicsObj.SetLinearVelocity(vel);
+		physicsObj.SetTemperature(physicsObj.GetTemperature() - 30.0f);
+	} else {
+		physicsObj.SetTemperature(0);
+	}
+}
+
+void idPlayer::leftClick(int abil) {
+	switch (abilitySelect) {
+	case 1:
+		BasicMelee();
+		break;
+	}
+}
+void idPlayer::rightClick(int abil) {
+	switch (abilitySelect) {
+	case 1:
+		Backdash();
+		break;
+	case 2:
+		Lunge();
+		break;
+	case 3:
+		Sidedash();
+		break;
+	case 4:
+		Superjump();
+	}
+}
+
 /*
 ==================
 idPlayer::WeaponFireFeedback
@@ -8628,6 +8725,34 @@ void idPlayer::PerformImpulse( int impulse ) {
 		}
 		case IMPULSEUNFREEZE: {
 			unfreeze();
+			break;
+		}
+		case IMPULSE_42: {
+			leftClick(abilitySelect);
+			break;
+		}
+		case IMPULSE_43: {
+			rightClick(abilitySelect);
+			break;
+		}
+		case IMPULSE_44: {
+			abilitySelect = 1;
+			break;
+		}
+		case IMPULSE_45: {
+			abilitySelect = 2;
+			break;
+		}
+		case IMPULSE_46: {
+			abilitySelect = 3;
+			break;
+		}
+		case IMPULSE_47: {
+			abilitySelect = 4;
+			break;
+		}
+		case IMPULSE_48: {
+			abilitySelect = 5;
 			break;
 		}
 
