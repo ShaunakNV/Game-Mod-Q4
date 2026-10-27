@@ -1527,6 +1527,10 @@ void idPlayer::Init( void ) {
 
 	//unfreeze mod variable
 	unfreezeCount = 0;
+	//engage variables
+	lungeEngage = 0;
+	sidedashEngage = 0;
+	superjumpEngage = 0;
 	//mod ability select variable
 	int abilitySelect = 1;
 
@@ -3952,7 +3956,7 @@ void idPlayer::UpdateConditions( void ) {
 	physicsObj.SetTemperature( idMath::ClampFloat(0.0f, 100.0f, physicsObj.GetTemperature()));
 
 
-	gameLocal.Printf("player.cpp impact test %.1f\n", physicsObj.GetwallImpactSpeed());
+	//gameLocal.Printf("player.cpp impact test %.1f\n", physicsObj.GetwallImpactSpeed());
 	float impact = physicsObj.GetwallImpactSpeed();
 	physicsObj.SetwallImpactSpeed(0.0f);
 	float floatdmg = 0;
@@ -3985,7 +3989,19 @@ void idPlayer::unfreeze(void) {
 }
 
 void idPlayer::BasicMelee(void) {
-	
+	idVec3	start;
+	idVec3	end;
+	trace_t	tr;
+
+	start = GetEyePosition();
+	end = start + viewAngles.ToForward() * 80.0f;
+	gameLocal.TracePoint(this, tr, start, end, MASK_SHOT_BOUNDINGBOX, this);
+	if (tr.fraction < 1.0f) {
+		idEntity* hit = gameLocal.entities[tr.c.entityNum];
+		if (hit && hit != this) {
+			hit->Damage(this, this, viewAxis[0], "damage_melee", (physicsObj.GetTemperature()/4.0), 0);
+		}
+	}
 }
 
 void idPlayer::Backdash(void) {
@@ -4002,6 +4018,26 @@ void idPlayer::Backdash(void) {
 	}
 }
 
+void idPlayer::LungeMelee(void) {
+	idVec3	start;
+	idVec3	end;
+	trace_t	tr;
+
+	start = GetEyePosition();
+	end = start + viewAngles.ToForward() * 160.0f;
+	gameLocal.TracePoint(this, tr, start, end, MASK_SHOT_BOUNDINGBOX, this);
+	if (tr.fraction < 1.0f) {
+		idEntity* hit = gameLocal.entities[tr.c.entityNum];
+		if (hit && hit != this) {
+			float close = 1.0f - tr.fraction;
+			float boost = 2.0f + 3.0f * close;
+			hit->Damage(this, this, viewAxis[0], "damage_melee", (physicsObj.GetTemperature() / 4.0) * boost, 0);
+			invulnerableTime = gameLocal.time + 500;
+			physicsObj.SetTemperature(idMath::ClampFloat(0.0f, 100.0f, physicsObj.GetTemperature() + 40.0f) );
+		}
+	}
+}
+
 void idPlayer::Lunge(void) {
 	if (physicsObj.GetTemperature() > 30) {
 		idVec3 up = -physicsObj.GetGravityNormal();
@@ -4011,8 +4047,40 @@ void idPlayer::Lunge(void) {
 		idVec3 vel = fwd * 1000.0f + up * 150.0f;
 		physicsObj.SetLinearVelocity(vel);
 		physicsObj.SetTemperature(physicsObj.GetTemperature() - 30.0f);
+		lungeEngage = 1;
 	} else {
 		physicsObj.SetTemperature(0);
+	}
+}
+
+void idPlayer::SidedashMelee(void) {
+	idVec3	start;
+	idVec3	end;
+	trace_t	tr;
+
+	start = GetEyePosition();
+	end = start + viewAngles.ToForward() * 160.0f;
+	gameLocal.TracePoint(this, tr, start, end, MASK_SHOT_BOUNDINGBOX, this);
+	if (tr.fraction < 1.0f) {
+		idEntity* hit = gameLocal.entities[tr.c.entityNum];
+		if (hit && hit != this) {
+			idVec3 up = -physicsObj.GetGravityNormal();
+
+			idVec3 playerForward = viewAxis[0];
+			playerForward -= up * (playerForward * up);
+			playerForward.Normalize();
+
+			idVec3 enemyForward = hit->GetPhysics()->GetAxis()[0];
+			enemyForward -= up * (enemyForward * up);
+			enemyForward.Normalize();
+			float d = playerForward * enemyForward;
+			d = idMath::ClampFloat(-1.0f, 1.0f, d);
+			float close = (d - 1.0f) / -2.0f;
+			float boost = 1.0f + 4.0f * close;
+			hit->Damage(this, this, viewAxis[0], "damage_melee", (physicsObj.GetTemperature() / 4.0) * boost, 0);
+			invulnerableTime = gameLocal.time + 500;
+			physicsObj.SetTemperature(idMath::ClampFloat(0.0f, 100.0f, physicsObj.GetTemperature() + 40.0f));
+		}
 	}
 }
 
@@ -4037,6 +4105,7 @@ void idPlayer::Sidedash(void) {
 		idVec3 vel = right * (float)direction * 1000.0f + up * 150.0f;
 		physicsObj.SetLinearVelocity(vel);
 		physicsObj.SetTemperature(physicsObj.GetTemperature() - 30.0f);
+		sidedashEngage = 1;
 	} else {
 		physicsObj.SetTemperature(0);
 	}
@@ -4048,16 +4117,53 @@ void idPlayer::Superjump(void) {
 
 		idVec3 vel = up * 1000.0f;
 		physicsObj.SetLinearVelocity(vel);
+		superjumpEngage = 1;
 		physicsObj.SetTemperature(physicsObj.GetTemperature() - 30.0f);
 	} else {
 		physicsObj.SetTemperature(0);
 	}
 }
 
+void idPlayer::Superslam(void) {
+		idVec3 up = -physicsObj.GetGravityNormal();
+
+		idVec3 vel = up * -1000.0f;
+		physicsObj.SetLinearVelocity(vel);
+}
+
 void idPlayer::leftClick(int abil) {
 	switch (abilitySelect) {
 	case 1:
 		BasicMelee();
+		break;
+	case 2:
+		if (lungeEngage == 0) {
+			BasicMelee();
+		}
+		else {
+			LungeMelee();
+			lungeEngage = 0;
+		}
+		break;
+	case 3:
+		if (sidedashEngage == 0) {
+			BasicMelee();
+		}
+		else {
+			SidedashMelee();
+			sidedashEngage = 0;
+		}
+		break;
+	case 4:
+		if (superjumpEngage == 0) {
+			BasicMelee();
+		}
+		else {
+			Superslam();
+			superjumpEngage = 0;
+		}
+		break;
+	case 5:
 		break;
 	}
 }
@@ -10265,6 +10371,10 @@ void idPlayer::Damage( idEntity *inflictor, idEntity *attacker, const idVec3 &di
 		}
 	}
 	// RAVEN END
+
+	if (gameLocal.time < invulnerableTime) {
+		return;
+	}
 
 	if ( forwardDamageEnt.IsValid() ) {
 		forwardDamageEnt->Damage( inflictor, attacker, dir, damageDefName, modifiedDamageScale, location );

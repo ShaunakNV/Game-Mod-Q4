@@ -474,9 +474,12 @@ public:
 	void					unfreeze(void);
 	void					BasicMelee(void);
 	void					Backdash(void);
+	void					LungeMelee(void);
 	void					Lunge(void);
+	void					SidedashMelee(void);
 	void					Sidedash(void);
 	void					Superjump(void);
+	void					Superslam(void);
 	void					leftClick(int abil);
 	void					rightClick(int abil);
 
@@ -898,6 +901,10 @@ private:
 	idInterpolate<float>	centerView;
 	bool					fxFov;
 	int						unfreezeCount;
+	int						lungeEngage;
+	int						sidedashEngage;
+	int						superjumpEngage;
+	int						invulnerableTime;
 	int						abilitySelect;
 
 	float					influenceFov;
