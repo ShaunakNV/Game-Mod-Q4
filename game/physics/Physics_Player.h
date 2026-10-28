@@ -122,6 +122,8 @@ public:	// common physics interface
 	//mod getters and setters for temperature
 	void					SetTemperature(float temper);
 	float					GetTemperature( void );
+	void					SetUltimate(float ult);
+	float					GetUltimate(void);
 	void					SetwallImpactSpeed(float speed);
 	float					GetwallImpactSpeed(void);
 

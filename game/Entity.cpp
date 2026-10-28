@@ -3125,163 +3125,167 @@ void idEntity::RestorePhysics( idPhysics *phys ) {
 idEntity::RunPhysics
 ================
 */
-bool idEntity::RunPhysics( void ) {
+bool idEntity::RunPhysics(void) {
 	int			i, reachedTime, startTime, endTime;
-	idEntity *	part, *blockedPart, *blockingEntity = NULL;
+	idEntity* part, * blockedPart, * blockingEntity = NULL;
 	trace_t		results;
 	bool		moved;
 
 	moved = false;
-
-// RAVEN BEGIN
-// jnewquist: Tag scope and callees to track allocations using "new".
-	MEM_SCOPED_TAG(tag,MA_PHYSICS);
-// RAVEN END
-
-	// don't run physics if not enabled
-	if ( !( thinkFlags & TH_PHYSICS ) ) {
-		// however do update any animation controllers
-		if ( UpdateAnimationControllers() ) {
-			BecomeActive( TH_ANIMATE );
-		}
-// RAVEN BEGIN
-// kfuller: we want to be able to debug draw the bbox regardless
-		physics->DebugDraw();
-// RAVEN END
+	if (gameLocal.time < gameLocal.ModFreezeMS && !IsType(idPlayer::GetClassType())) {
+		physics->UpdateTime(gameLocal.time);
 		return false;
 	}
 
-	// if this entity is a team slave don't do anything because the team master will handle everything
-	if ( teamMaster && teamMaster != this ) {
-		return false;
-	}
+		// RAVEN BEGIN
+		// jnewquist: Tag scope and callees to track allocations using "new".
+		MEM_SCOPED_TAG(tag, MA_PHYSICS);
+		// RAVEN END
 
-	startTime = gameLocal.previousTime;
-	endTime = gameLocal.time;
-
-	gameLocal.push.InitSavingPushedEntityPositions();
-	blockedPart = NULL;
-
-	// save the physics state of the whole team and disable the team for collision detection
-	for ( part = this; part != NULL; part = part->teamChain ) {
-		if ( part->physics ) {
-			if ( !part->fl.solidForTeam ) {
-				part->physics->DisableClip();
+			// don't run physics if not enabled
+		if (!(thinkFlags & TH_PHYSICS)) {
+			// however do update any animation controllers
+			if (UpdateAnimationControllers()) {
+				BecomeActive(TH_ANIMATE);
 			}
-			part->physics->SaveState();
-		}
-	}
-
-	// move the whole team
-	for ( part = this; part != NULL; part = part->teamChain ) {
-
-		if ( part->physics ) {
-
-			// run physics
-// RAVEN BEGIN
-// ddynerman: optional pre-prediction
-			moved = part->physics->Evaluate( endTime - startTime + part->predictTime, endTime );
-			part->predictTime = 0;
-// RAVEN END
-
-			// check if the object is blocked
-			blockingEntity = part->physics->GetBlockingEntity();
-			if ( blockingEntity ) {
-				blockedPart = part;
-				break;
-			}
-
-			// if moved or forced to update the visual position and orientation from the physics
-			if ( moved || part->fl.forcePhysicsUpdate ) {
-				part->UpdateFromPhysics( false );
-			}
-
-			// update any animation controllers here so an entity bound
-			// to a joint of this entity gets the correct position
-			if ( part->UpdateAnimationControllers() ) {
-				part->BecomeActive( TH_ANIMATE );
-			}
-		}
-	}
-
-	// enable the whole team for collision detection
-	for ( part = this; part != NULL; part = part->teamChain ) {
-		if ( part->physics ) {
-			if ( !part->fl.solidForTeam ) {
-				part->physics->EnableClip();
-			}
-		}
-	}
-
-	// cdr: Obstacle Avoidance
-	if (ai_useRVMasterMove.GetBool() && moved && fl.isAIObstacle) {
-		AI_EntityMoved(this);
-	}
-
-	// if one of the team entities is a pusher and blocked
-	if ( blockedPart ) {
-		// move the parts back to the previous position
-		for ( part = this; part != blockedPart; part = part->teamChain ) {
-
-			if ( part->physics ) {
-
-				// restore the physics state
-				part->physics->RestoreState();
-
-				// move back the visual position and orientation
-				part->UpdateFromPhysics( true );
-			}
-		}
-		for ( part = this; part != NULL; part = part->teamChain ) {
-			if ( part->physics ) {
-				// update the physics time without moving
-				part->physics->UpdateTime( endTime );
-			}
-		}
-
-		// restore the positions of any pushed entities
-		gameLocal.push.RestorePushedEntityPositions();
-
-		if ( gameLocal.isClient ) {
+			// RAVEN BEGIN
+			// kfuller: we want to be able to debug draw the bbox regardless
+			physics->DebugDraw();
+			// RAVEN END
 			return false;
 		}
 
-		// if the master pusher has a "blocked" function, call it
-		Signal( SIG_BLOCKED );
-		ProcessEvent( &EV_TeamBlocked, blockedPart, blockingEntity );
-		// call the blocked function on the blocked part
-		blockedPart->ProcessEvent( &EV_PartBlocked, blockingEntity );
-		return false;
-	}
+		// if this entity is a team slave don't do anything because the team master will handle everything
+		if (teamMaster && teamMaster != this) {
+			return false;
+		}
 
-	// set pushed
-	for ( i = 0; i < gameLocal.push.GetNumPushedEntities(); i++ ) {
-		idEntity *ent = gameLocal.push.GetPushedEntity( i );
-		ent->physics->SetPushed( endTime - startTime );
-	}
+		startTime = gameLocal.previousTime;
+		endTime = gameLocal.time;
 
-	if ( gameLocal.isClient ) {
-		return true;
-	}
+		gameLocal.push.InitSavingPushedEntityPositions();
+		blockedPart = NULL;
 
-	// post reached event if the current time is at or past the end point of the motion
-	for ( part = this; part != NULL; part = part->teamChain ) {
-
-		if ( part->physics ) {
-
-			reachedTime = part->physics->GetLinearEndTime();
-			if ( startTime < reachedTime && endTime >= reachedTime ) {
-				part->ProcessEvent( &EV_ReachedPos );
-			}
-			reachedTime = part->physics->GetAngularEndTime();
-			if ( startTime < reachedTime && endTime >= reachedTime ) {
-				part->ProcessEvent( &EV_ReachedAng );
+		// save the physics state of the whole team and disable the team for collision detection
+		for (part = this; part != NULL; part = part->teamChain) {
+			if (part->physics) {
+				if (!part->fl.solidForTeam) {
+					part->physics->DisableClip();
+				}
+				part->physics->SaveState();
 			}
 		}
-	}
 
-	return true;
-}
+		// move the whole team
+		for (part = this; part != NULL; part = part->teamChain) {
+
+			if (part->physics) {
+
+				// run physics
+	// RAVEN BEGIN
+	// ddynerman: optional pre-prediction
+				moved = part->physics->Evaluate(endTime - startTime + part->predictTime, endTime);
+				part->predictTime = 0;
+				// RAVEN END
+
+							// check if the object is blocked
+				blockingEntity = part->physics->GetBlockingEntity();
+				if (blockingEntity) {
+					blockedPart = part;
+					break;
+				}
+
+				// if moved or forced to update the visual position and orientation from the physics
+				if (moved || part->fl.forcePhysicsUpdate) {
+					part->UpdateFromPhysics(false);
+				}
+
+				// update any animation controllers here so an entity bound
+				// to a joint of this entity gets the correct position
+				if (part->UpdateAnimationControllers()) {
+					part->BecomeActive(TH_ANIMATE);
+				}
+			}
+		}
+
+		// enable the whole team for collision detection
+		for (part = this; part != NULL; part = part->teamChain) {
+			if (part->physics) {
+				if (!part->fl.solidForTeam) {
+					part->physics->EnableClip();
+				}
+			}
+		}
+
+		// cdr: Obstacle Avoidance
+		if (ai_useRVMasterMove.GetBool() && moved && fl.isAIObstacle) {
+			AI_EntityMoved(this);
+		}
+
+		// if one of the team entities is a pusher and blocked
+		if (blockedPart) {
+			// move the parts back to the previous position
+			for (part = this; part != blockedPart; part = part->teamChain) {
+
+				if (part->physics) {
+
+					// restore the physics state
+					part->physics->RestoreState();
+
+					// move back the visual position and orientation
+					part->UpdateFromPhysics(true);
+				}
+			}
+			for (part = this; part != NULL; part = part->teamChain) {
+				if (part->physics) {
+					// update the physics time without moving
+					part->physics->UpdateTime(endTime);
+				}
+			}
+
+			// restore the positions of any pushed entities
+			gameLocal.push.RestorePushedEntityPositions();
+
+			if (gameLocal.isClient) {
+				return false;
+			}
+
+			// if the master pusher has a "blocked" function, call it
+			Signal(SIG_BLOCKED);
+			ProcessEvent(&EV_TeamBlocked, blockedPart, blockingEntity);
+			// call the blocked function on the blocked part
+			blockedPart->ProcessEvent(&EV_PartBlocked, blockingEntity);
+			return false;
+		}
+
+		// set pushed
+		for (i = 0; i < gameLocal.push.GetNumPushedEntities(); i++) {
+			idEntity* ent = gameLocal.push.GetPushedEntity(i);
+			ent->physics->SetPushed(endTime - startTime);
+		}
+
+		if (gameLocal.isClient) {
+			return true;
+		}
+
+		// post reached event if the current time is at or past the end point of the motion
+		for (part = this; part != NULL; part = part->teamChain) {
+
+			if (part->physics) {
+
+				reachedTime = part->physics->GetLinearEndTime();
+				if (startTime < reachedTime && endTime >= reachedTime) {
+					part->ProcessEvent(&EV_ReachedPos);
+				}
+				reachedTime = part->physics->GetAngularEndTime();
+				if (startTime < reachedTime && endTime >= reachedTime) {
+					part->ProcessEvent(&EV_ReachedAng);
+				}
+			}
+		}
+
+		return true;
+	}
 
 /*
 ================

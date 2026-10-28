@@ -3034,6 +3034,30 @@ void Cmd_SetTemp_f(const idCmdArgs& args) {
 	idPhysics_Player* phys = static_cast<idPhysics_Player*>(player->GetPhysics());
 	phys->SetTemperature(atof(args.Argv(1)));
 }
+void Cmd_SetUlt_f(const idCmdArgs& args) {
+	idPlayer* player = gameLocal.GetLocalPlayer();
+	if (!player) {
+		return;
+	}
+	if (args.Argc() < 2) {
+		gameLocal.Printf("Set Temperature\n");
+		return;
+	}
+	idPhysics_Player* phys = static_cast<idPhysics_Player*>(player->GetPhysics());
+	phys->SetUltimate(atof(args.Argv(1)));
+}
+
+void Cmd_FreezeWorld_f(const idCmdArgs& args) {
+	idPlayer* player = gameLocal.GetLocalPlayer();
+	if (!player) {
+		return;
+	}
+	int ms = 1000;
+	if (args.Argc() > 1) {
+		ms = atoi(args.Argv(1));
+	}
+	player->FreezeGame(ms);
+}
 
 #ifndef _FINAL
 void Cmd_ClientOverflowReliable_f( const idCmdArgs& args ) {
@@ -3066,7 +3090,9 @@ void idGameLocal::InitConsoleCommands( void ) {
 //	cmdSystem->AddCommand( "writeGameState",		WriteGameState_f,			CMD_FL_GAME,				"write game state" );
 //	cmdSystem->AddCommand( "testSaveGame",			TestSaveGame_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"test a save game for a level" );
 // RAVEN END
+	cmdSystem->AddCommand("freezeworld", Cmd_FreezeWorld_f, CMD_FL_GAME, "freeze ememies");
 	cmdSystem->AddCommand("settemp", Cmd_SetTemp_f, CMD_FL_GAME, "sets the player's temperature 0-100");
+	cmdSystem->AddCommand("setult", Cmd_SetUlt_f, CMD_FL_GAME, "sets the player's ultimate, 0-100");
 	cmdSystem->AddCommand( "game_memory",			idClass::DisplayInfo_f,		CMD_FL_GAME,				"displays game class info" );
 	cmdSystem->AddCommand( "listClasses",			idClass::ListClasses_f,		CMD_FL_GAME,				"lists game classes" );
 	cmdSystem->AddCommand( "listThreads",			idThread::ListThreads_f,	CMD_FL_GAME|CMD_FL_CHEAT,	"lists script threads" );

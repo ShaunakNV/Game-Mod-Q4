@@ -79,6 +79,8 @@ const int IMPULSE_45 = 45; //movement ability 2
 const int IMPULSE_46 = 46; //movement ability 3
 const int IMPULSE_47 = 47; //movement ability 4
 const int IMPULSE_48 = 48; //movement ability 5
+const int IMPULSE_49 = 49;
+
 
 // RAVEN BEGIN
 // bdube: added flashlight
@@ -86,6 +88,11 @@ const int IMPULSE_50			= 50;			// activate flashlight
 const int IMPULSE_51			= 51;			// switch to last weapon
 // ddynerman: mp stats
 const int IMPULSE_52			= 52;			// mp statistics
+//ultimates
+const int IMPULSE_53 = 53;
+const int IMPULSE_54 = 54;
+const int IMPULSE_55 = 55;
+
 // RAVEN END
 
 

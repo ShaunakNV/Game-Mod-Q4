@@ -471,7 +471,12 @@ public:
  	bool					SkipCinematic( void );
 
 	void					UpdateConditions( void );
+
+	//mod 
+	//void					ultimate1(void);
+	//static int			getult1time(void);
 	void					unfreeze(void);
+	void					PushEnemies();
 	void					BasicMelee(void);
 	void					Backdash(void);
 	void					LungeMelee(void);
@@ -482,6 +487,10 @@ public:
 	void					Superslam(void);
 	void					leftClick(int abil);
 	void					rightClick(int abil);
+
+	void					FreezeGame(int ms);
+	void					UnfreezeGame(void);
+	void					UpdateFreeze(void);
 
 	void					SetViewAngles( const idAngles &angles );
 
@@ -900,11 +909,19 @@ private:
 	idInterpolate<float>	zoomFov;
 	idInterpolate<float>	centerView;
 	bool					fxFov;
+
+	//mod variables
 	int						unfreezeCount;
 	int						lungeEngage;
 	int						sidedashEngage;
 	int						superjumpEngage;
 	int						invulnerableTime;
+	bool					freezeNotarget;
+	int						ult2Hits;
+	bool					ult2Check;
+	bool					ult1Check;
+
+	//int						ult1time;
 	int						abilitySelect;
 
 	float					influenceFov;

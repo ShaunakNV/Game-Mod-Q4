@@ -389,7 +389,6 @@ void idInventory::RestoreInventory( idPlayer *owner, const idDict &dict ) {
 		lti.triggerName = dict.GetString( itemname );
 		levelTriggers.Append( lti );
 	}
-
 }
 
 /*
@@ -1532,8 +1531,10 @@ void idPlayer::Init( void ) {
 	sidedashEngage = 0;
 	superjumpEngage = 0;
 	//mod ability select variable
-	int abilitySelect = 1;
-
+	abilitySelect = 1;
+	ult1Check = false;
+	ult2Check = false;
+	ult2Hits = 0;
 
 	influenceFov			= 0;
 	influenceActive			= 0;
@@ -2066,6 +2067,7 @@ void idPlayer::Spawn( void ) {
 //RITUAL END
 
 	itemCosts = static_cast< const idDeclEntityDef * >( declManager->FindType( DECL_ENTITYDEF, "ItemCostConstants", false ) );
+	inventory.weapons = 0;
 }
 
 /*
@@ -3420,6 +3422,14 @@ void idPlayer::UpdateHudStats( idUserInterface *_hud ) {
 		_hud->SetStateFloat("player_temperaturepct", idMath::ClampFloat(0.0f, 1.0f, physicsObj.GetTemperature()/100.0f));
 		_hud->HandleNamedEvent("updateTemperature");
 	}
+
+	temp = _hud->State().GetInt("player_ultimate", "-1");
+	if (temp != physicsObj.GetUltimate()) {
+		_hud->SetStateInt("player_ultimateDelta", temp == -1 ? 0 : (temp - physicsObj.GetUltimate()));
+		_hud->SetStateInt("player_ultimate", (int)physicsObj.GetUltimate() < -100 ? -100 : physicsObj.GetUltimate());
+		_hud->SetStateFloat("player_ultrimatepct", idMath::ClampFloat(0.0f, 1.0f, physicsObj.GetUltimate() / 100.0f));
+		_hud->HandleNamedEvent("updateUltimate");
+	}
 		
 	temp = _hud->State().GetInt ( "player_armor", "-1" );
 	if ( temp != inventory.armor ) {
@@ -3899,6 +3909,7 @@ bool idPlayer::SkipCinematic( void ) {
 	return gameLocal.SkipCinematic();
 }
    
+
 /*
 =====================
 idPlayer::UpdateConditions
@@ -3955,7 +3966,10 @@ void idPlayer::UpdateConditions( void ) {
 	}
 	physicsObj.SetTemperature( idMath::ClampFloat(0.0f, 100.0f, physicsObj.GetTemperature()));
 
-
+	if (physicsObj.GetTemperature() > 90) {
+		physicsObj.SetUltimate(physicsObj.GetUltimate() + dt);
+	}
+	physicsObj.SetUltimate(idMath::ClampFloat(0.0f, 100.0f, physicsObj.GetUltimate()));
 	//gameLocal.Printf("player.cpp impact test %.1f\n", physicsObj.GetwallImpactSpeed());
 	float impact = physicsObj.GetwallImpactSpeed();
 	physicsObj.SetwallImpactSpeed(0.0f);
@@ -3971,10 +3985,43 @@ void idPlayer::UpdateConditions( void ) {
 			
 		}
 	}
-	
+	//checks ult freeze time
+	UpdateFreeze();
 
-
+	gameLocal.Printf("time %d frozenUntil %d\n", gameLocal.time, gameLocal.ModFreezeMS);
  	pfl.dead	= ( health <= 0 );
+}
+
+
+/*
+void idPlayer::ultimate1(void) {
+	if (physicsObj.GetUltimate() == 100) {
+		ult1time = gameLocal.time + 20000;
+		physicsObj.SetUltimate(0);
+	}
+}
+*/
+
+void idPlayer::FreezeGame(int ms) {
+	if (ms <= 0) {
+		UnfreezeGame();
+		return;
+	}
+	gameLocal.ModFreezeMS = gameLocal.time + ms;
+	freezeNotarget = true;
+	fl.notarget = true;  
+}
+
+void idPlayer::UnfreezeGame(void) {
+	gameLocal.ModFreezeMS = 0;
+		fl.notarget = false; 
+		freezeNotarget = false;
+}
+
+void idPlayer::UpdateFreeze(void) {
+	if (freezeNotarget && (gameLocal.time >= gameLocal.ModFreezeMS)) {
+		UnfreezeGame();
+	}
 }
 
 void idPlayer::unfreeze(void) {
@@ -3986,6 +4033,33 @@ void idPlayer::unfreeze(void) {
 			unfreezeCount = 0;
 		}
 	}
+}
+
+void idPlayer::PushEnemies() {
+	float strength = 500 * (physicsObj.GetTemperature() - 10);
+	idEntity* list[MAX_GENTITIES];
+	idVec3		origin = physicsObj.GetOrigin();
+	idVec3		up = -physicsObj.GetGravityNormal();
+	int num = gameLocal.EntitiesWithinRadius(origin, 1500.0f, list, MAX_GENTITIES);
+	for (int i = 0; i < num; i++) {
+		idEntity* ent = list[i];
+		if (!ent || ent == this || !ent->IsType(idActor::GetClassType())) {
+			continue;
+		}
+		idActor* actor = static_cast<idActor*>(ent);
+		if (actor->team == team || actor->health <= 0) {
+			continue;
+		}
+		idVec3 dir = ent->GetPhysics()->GetOrigin() - origin;
+		dir -= (dir * up) * up;
+		if (dir.Normalize() < 0.01f) {
+			dir = viewAxis[0];
+		}
+		dir += up * 0.3f;
+		dir.Normalize();
+			ent->GetPhysics()->ApplyImpulse(0, ent->GetPhysics()->GetOrigin(), dir * strength);
+	}
+	physicsObj.SetTemperature(10);
 }
 
 void idPlayer::BasicMelee(void) {
@@ -4115,7 +4189,7 @@ void idPlayer::Superjump(void) {
 	if (physicsObj.GetTemperature() > 30) {
 		idVec3 up = -physicsObj.GetGravityNormal();
 
-		idVec3 vel = up * 1000.0f;
+		idVec3 vel = up * 800.0f;
 		physicsObj.SetLinearVelocity(vel);
 		superjumpEngage = 1;
 		physicsObj.SetTemperature(physicsObj.GetTemperature() - 30.0f);
@@ -4127,8 +4201,26 @@ void idPlayer::Superjump(void) {
 void idPlayer::Superslam(void) {
 		idVec3 up = -physicsObj.GetGravityNormal();
 
-		idVec3 vel = up * -1000.0f;
+		idVec3 vel = up * -800.0f;
 		physicsObj.SetLinearVelocity(vel);
+
+		idVec3	start;
+		idVec3	end;
+		trace_t	tr;
+		idBounds aoe = physicsObj.GetBounds().Expand(50.0f);
+
+		start = physicsObj.GetOrigin();
+		end = start + physicsObj.GetGravityNormal() * 5000.0f;
+		gameLocal.TraceBounds(this, tr, start, end, aoe, MASK_PLAYERSOLID, this);
+		if (tr.fraction < 1.0f) {
+			idEntity* hit = gameLocal.entities[tr.c.entityNum];
+			if (hit && hit != this && hit->IsType(idActor::GetClassType())) {
+				hit->Damage(this, this, viewAxis[0], "damage_melee", (physicsObj.GetTemperature()), 0);
+				invulnerableTime = gameLocal.time + 500;
+				physicsObj.SetTemperature(idMath::ClampFloat(0.0f, 100.0f, physicsObj.GetTemperature() + 40.0f));
+			}
+		}
+		
 }
 
 void idPlayer::leftClick(int abil) {
@@ -4165,6 +4257,38 @@ void idPlayer::leftClick(int abil) {
 		break;
 	case 5:
 		break;
+	case 6: {
+		idVec3	start6;
+		idVec3	end6;
+		trace_t	tr6;
+
+		start6 = GetEyePosition();
+		end6 = start6 + viewAngles.ToForward() * 80.0f;
+		gameLocal.TracePoint(this, tr6, start6, end6, MASK_SHOT_BOUNDINGBOX, this);
+		if (tr6.fraction < 1.0f) {
+			idEntity* hit = gameLocal.entities[tr6.c.entityNum];
+			if (hit && hit != this) {
+				hit->Damage(this, this, viewAxis[0], "damage_melee", 800.0f, 0);
+			}
+		}
+		break;
+	}
+	case 7: {
+		idVec3	start7;
+		idVec3	end7;
+		trace_t	tr7;
+		start7 = GetEyePosition();
+		end7 = start7 + viewAngles.ToForward() * 2000.0f;
+		gameLocal.TracePoint(this, tr7, start7, end7, MASK_SHOT_BOUNDINGBOX, this);
+		if (tr7.fraction < 1.0f) {
+			idEntity* hit = gameLocal.entities[tr7.c.entityNum];
+			if (hit && hit != this) {
+				hit->Damage(this, this, viewAxis[0], "damage_melee", 800.0f, 0);
+				ult2Hits += 1;
+			}
+		}
+		break;
+	}
 	}
 }
 void idPlayer::rightClick(int abil) {
@@ -5702,9 +5826,7 @@ idPlayer::ShowCrosshair
 ===============
 */
 void idPlayer::ShowCrosshair( void ) {
-	if ( !weaponEnabled ) {
-		return;
-	}
+
 
 	if ( cursor ) {
 		cursor->HandleNamedEvent( "showCrossCombat" );
@@ -5718,9 +5840,9 @@ idPlayer::HideCrosshair
 ===============
 */
 void idPlayer::HideCrosshair( void ) {
-	if ( cursor ) {
-		cursor->HandleNamedEvent( "crossHide" );
-	}
+	//if ( cursor ) {
+	//	cursor->HandleNamedEvent( "crossHide" );
+	//}
 }
 
 /*
@@ -5972,6 +6094,7 @@ idPlayer::SelectWeapon
 ===============
 */
 void idPlayer::SelectWeapon( const char *weapon_name ) {
+	return;
 	Event_SelectWeapon( weapon_name );
 }
 
@@ -6200,6 +6323,7 @@ DropWeapon
 =================
 */
 void idPlayer::DropWeapon( void ) {
+
 	idEntity*	item;
 	idDict		args;
 	const char*	itemClass;
@@ -6308,6 +6432,8 @@ idPlayer::Weapon_Combat
 */
 void idPlayer::Weapon_Combat( void ) {
 	
+	//mod disable weapon
+	return;
  	if ( influenceActive || !weaponEnabled || gameLocal.inCinematic || privateCameraView ) {
 		return;
 	}
@@ -8858,9 +8984,23 @@ void idPlayer::PerformImpulse( int impulse ) {
 			break;
 		}
 		case IMPULSE_48: {
-			abilitySelect = 5;
+			if (physicsObj.GetTemperature() > 10) {
+				PushEnemies();
+			}
 			break;
 		}
+		case IMPULSE_49: {
+			if (physicsObj.GetUltimate() == 100) {
+				FreezeGame(20000);
+				physicsObj.SetTemperature( 100 );
+				gameLocal.ForwardUntilMS = gameLocal.time + 20000;
+				ult1Check = true;
+				abilitySelect = 6;
+				physicsObj.SetUltimate(0);
+			}
+			break;
+		}
+
 
 // RITUAL BEGIN
 // squirrel: Mode-agnostic buymenus
@@ -8875,9 +9015,12 @@ void idPlayer::PerformImpulse( int impulse ) {
 		case IMPULSE_108:	break; // Unused
 		case IMPULSE_109:	AttemptToBuyItem( "weapon_napalmgun" );				break;
 		case IMPULSE_110:	/* AttemptToBuyItem( "weapon_dmg" );*/				break;
+			//mod cases 111-115
 		case IMPULSE_111:	break; // Unused
 		case IMPULSE_112:	break; // Unused
-		case IMPULSE_113:	break; // Unused
+		case IMPULSE_113:	
+			
+			break; // Unused
 		case IMPULSE_114:	break; // Unused
 		case IMPULSE_115:	break; // Unused
 		case IMPULSE_116:	break; // Unused
@@ -8895,12 +9038,19 @@ void idPlayer::PerformImpulse( int impulse ) {
 // RITUAL END
 
 		case IMPULSE_50: {
-			ToggleFlashlight ( );
+			if (physicsObj.GetUltimate() == 100) {
+				FreezeGame(20000);
+				gameLocal.CountdownMS = gameLocal.time + 20000;
+				ult2Check = true;
+				ult2Hits = 0;
+				abilitySelect = 7;
+				physicsObj.SetUltimate(0);
+			}
 			break;
 		}
 
  		case IMPULSE_51: {
- 			LastWeapon();
+ 			
  			break;
  		}
 	} 
@@ -9287,6 +9437,22 @@ void idPlayer::Move( void ) {
 	}
 
 	physicsObj.SetDebugLevel( g_debugMove.GetBool() );
+	if (gameLocal.time < gameLocal.ForwardUntilMS) {
+		usercmd.forwardmove = 127;
+	}
+	else if (gameLocal.time >= gameLocal.ForwardUntilMS && ult1Check == true) {
+		ult1Check = false;
+		physicsObj.SetUltimate(0);
+		abilitySelect = 1;
+	}
+	if (ult2Check == true && gameLocal.time > gameLocal.CountdownMS) {
+		if (ult2Hits < 3) {
+			physicsObj.SetTemperature(0);
+		}
+		ult2Check = false;
+		abilitySelect = 1;
+		physicsObj.SetUltimate(0);
+	}
 	physicsObj.SetPlayerInput( usercmd, viewAngles );
 
 	// FIXME: physics gets disabled somehow
@@ -10371,11 +10537,11 @@ void idPlayer::Damage( idEntity *inflictor, idEntity *attacker, const idVec3 &di
 		}
 	}
 	// RAVEN END
-
+	/*
 	if (gameLocal.time < invulnerableTime) {
 		return;
 	}
-
+	*/
 	if ( forwardDamageEnt.IsValid() ) {
 		forwardDamageEnt->Damage( inflictor, attacker, dir, damageDefName, modifiedDamageScale, location );
 		return;

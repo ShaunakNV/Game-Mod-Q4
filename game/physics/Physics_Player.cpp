@@ -8,6 +8,7 @@ END_CLASS
 
 //mod code
 float temperature = 20.0f;
+float ultimate = 0.0f;
 float wallImpactSpeed = 0.0f;
 
 // movement parameters
@@ -65,6 +66,14 @@ void idPhysics_Player::SetTemperature(float temper){
 float idPhysics_Player::GetTemperature() {
 	return temperature;
 }
+
+void idPhysics_Player::SetUltimate(float ult) {
+	ultimate = ult;
+}
+float idPhysics_Player::GetUltimate() {
+	return ultimate;
+}
+
 //mod wallspeed getter and setter
 void idPhysics_Player::SetwallImpactSpeed(float speed) {
 	wallImpactSpeed = speed;
