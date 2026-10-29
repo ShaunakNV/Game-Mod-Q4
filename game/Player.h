@@ -475,8 +475,11 @@ public:
 	//mod 
 	//void					ultimate1(void);
 	//static int			getult1time(void);
+	void					setWaveSpawning(bool b);
 	void					unfreeze(void);
-	void					PushEnemies();
+	void					PushEnemies(void);
+	void					Knockback(void);
+	void					LifeSteal(void);
 	void					BasicMelee(void);
 	void					Backdash(void);
 	void					LungeMelee(void);
@@ -487,6 +490,7 @@ public:
 	void					Superslam(void);
 	void					leftClick(int abil);
 	void					rightClick(int abil);
+	void					ModdedWaveSpawn(int e);
 
 	void					FreezeGame(int ms);
 	void					UnfreezeGame(void);
@@ -912,6 +916,9 @@ private:
 
 	//mod variables
 	int						unfreezeCount;
+	int						enemiesMod;
+	int						spawnWave;
+	bool					waveSpawning;
 	int						lungeEngage;
 	int						sidedashEngage;
 	int						superjumpEngage;

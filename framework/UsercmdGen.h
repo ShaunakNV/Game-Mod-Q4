@@ -92,6 +92,9 @@ const int IMPULSE_52			= 52;			// mp statistics
 const int IMPULSE_53 = 53;
 const int IMPULSE_54 = 54;
 const int IMPULSE_55 = 55;
+const int IMPULSE_56 = 56;
+const int IMPULSE_57 = 57;
+
 
 // RAVEN END
 

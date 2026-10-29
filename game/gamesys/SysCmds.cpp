@@ -3058,6 +3058,20 @@ void Cmd_FreezeWorld_f(const idCmdArgs& args) {
 	}
 	player->FreezeGame(ms);
 }
+void Cmd_WaveSpawn_f(const idCmdArgs& args) {
+	idPlayer* player = gameLocal.GetLocalPlayer();
+	if (!player) {
+		return;
+	}
+	if (args.Argc() > 1) {
+		player->setWaveSpawning(true);
+	}
+	else {
+		player->setWaveSpawning(false);
+	}
+	
+}
+
 
 #ifndef _FINAL
 void Cmd_ClientOverflowReliable_f( const idCmdArgs& args ) {
@@ -3090,6 +3104,7 @@ void idGameLocal::InitConsoleCommands( void ) {
 //	cmdSystem->AddCommand( "writeGameState",		WriteGameState_f,			CMD_FL_GAME,				"write game state" );
 //	cmdSystem->AddCommand( "testSaveGame",			TestSaveGame_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"test a save game for a level" );
 // RAVEN END
+	cmdSystem->AddCommand("wavespawn", Cmd_WaveSpawn_f, CMD_FL_GAME, "wavespawning");
 	cmdSystem->AddCommand("freezeworld", Cmd_FreezeWorld_f, CMD_FL_GAME, "freeze ememies");
 	cmdSystem->AddCommand("settemp", Cmd_SetTemp_f, CMD_FL_GAME, "sets the player's temperature 0-100");
 	cmdSystem->AddCommand("setult", Cmd_SetUlt_f, CMD_FL_GAME, "sets the player's ultimate, 0-100");

@@ -1526,6 +1526,9 @@ void idPlayer::Init( void ) {
 
 	//unfreeze mod variable
 	unfreezeCount = 0;
+	enemiesMod = 5;
+	spawnWave = gameLocal.time+ 60000;
+	waveSpawning = false;
 	//engage variables
 	lungeEngage = 0;
 	sidedashEngage = 0;
@@ -1574,6 +1577,15 @@ void idPlayer::Init( void ) {
 
 	// restore persistent data
 	RestorePersistantInfo();
+	int blasterSlot = SlotForWeapon("weapon_blaster");
+	int gauntletSlot = SlotForWeapon("weapon_gauntlet");
+	if (gauntletSlot >= 0) {
+		inventory.weapons |= (1 << gauntletSlot);   
+		if (blasterSlot >= 0 && blasterSlot != gauntletSlot) {
+			inventory.Drop(spawnArgs, "weapon_blaster", blasterSlot);
+		}
+		idealWeapon = gauntletSlot;   
+	}
 
 	bobCycle	= 0;
 
@@ -1703,6 +1715,9 @@ void idPlayer::Init( void ) {
  	lastTeleFX			= -9999;
 
 	hiddenWeapon		= false;
+	if (inventory.weapons == 0) {
+		hiddenWeapon = true;
+	}
 	tipUp				= false;
 	objectiveUp			= false;
  	teleportEntity		= NULL;
@@ -1991,7 +2006,7 @@ void idPlayer::Spawn( void ) {
 		}
 // RAVEN BEGIN
 // mekberg: set to blaster now and disable the weapon.
-		idealWeapon = SlotForWeapon ( "weapon_blaster" ); 
+		idealWeapon = SlotForWeapon ( "weapon_gauntlet" ); 
 		Event_DisableWeapon( );
 // RAVEN END
 	} else {
@@ -4026,6 +4041,10 @@ void idPlayer::UpdateFreeze(void) {
 	}
 }
 
+void idPlayer::setWaveSpawning(bool b) {
+	waveSpawning = b;
+}
+
 void idPlayer::unfreeze(void) {
 	if (physicsObj.GetTemperature() == 0) {
 		gameLocal.Printf("unfreeze count %d\n", unfreezeCount); 
@@ -4038,7 +4057,7 @@ void idPlayer::unfreeze(void) {
 }
 
 void idPlayer::PushEnemies() {
-	float strength = 1000 * (physicsObj.GetTemperature() - 10);
+	float strength = 500 * (physicsObj.GetTemperature() - 10);
 	idEntity* list[MAX_GENTITIES];
 	idVec3		origin = physicsObj.GetOrigin();
 	idVec3		up = -physicsObj.GetGravityNormal();
@@ -4063,7 +4082,26 @@ void idPlayer::PushEnemies() {
 	}
 	physicsObj.SetTemperature(10);
 }
+void idPlayer::Knockback(void) {
 
+}
+
+void idPlayer::LifeSteal(void) {
+	idVec3	start;
+	idVec3	end;
+	trace_t	tr;
+
+	start = GetEyePosition();
+	end = start + viewAngles.ToForward() * 80.0f;
+	gameLocal.TracePoint(this, tr, start, end, MASK_SHOT_BOUNDINGBOX, this);
+	if (tr.fraction < 1.0f) {
+		idEntity* hit = gameLocal.entities[tr.c.entityNum];
+		if (hit && hit != this && hit->IsType(idActor::GetClassType())) {
+			hit->Damage(this, this, viewAxis[0], "damage_melee", 10.0f, 0);
+			Give("health", "10");
+		}
+	}
+}
 void idPlayer::BasicMelee(void) {
 	idVec3	start;
 	idVec3	end;
@@ -4319,6 +4357,12 @@ void idPlayer::leftClick(int abil) {
 			}
 		}
 	}
+	case 9:
+		LifeSteal();
+		break;
+	case 10:
+		Knockback();
+		break;
 	}
 }
 void idPlayer::rightClick(int abil) {
@@ -4339,7 +4383,27 @@ void idPlayer::rightClick(int abil) {
 		Damage(NULL, NULL, idVec3(0, 0, 0), "damage_impact", 10, 0);
 	}
 }
+void idPlayer::ModdedWaveSpawn(int e) {
+	gameLocal.Printf("modded wave function");
+	float spawnCircle = 500.0f;
+	idVec3 playerPos = this->GetPhysics()->GetOrigin();
+	for (int i = 0; i < e; i++)
+	{
+		gameLocal.Printf("function wave loop");
+		float angle = (2.0f * idMath::PI * i) / e;
 
+		idVec3 spawnPos;
+		spawnPos.x = playerPos.x + spawnCircle * idMath::Cos(angle);
+		spawnPos.y = playerPos.y + spawnCircle * idMath::Sin(angle);
+		spawnPos.z = playerPos.z;
+
+		idDict args;
+		args.Set("classname", "monster_strogg_marine");
+		args.Set("origin", spawnPos.ToString());
+
+		gameLocal.SpawnEntityDef(args);
+	}
+}
 /*
 ==================
 idPlayer::WeaponFireFeedback
@@ -9092,6 +9156,14 @@ void idPlayer::PerformImpulse( int impulse ) {
 			}
  			break;
  		}
+		case IMPULSE_56: {
+			abilitySelect = 9;
+			break;
+		}
+		case IMPULSE_57: {
+			abilitySelect = 10;
+			break;
+		}
 	} 
 
 //RAVEN BEGIN
@@ -9842,7 +9914,14 @@ void idPlayer::Think( void ) {
 
 		return;
 	}
-
+	if (waveSpawning == true) {
+		if (gameLocal.time >= spawnWave) {
+			gameLocal.Printf("playerthink loop");
+			ModdedWaveSpawn(5);
+			spawnWave = gameLocal.time + 60000;
+			enemiesMod += 1;
+		}
+	}
 	if( reloadModel ) {
 		LoadDeferredModel(); 
 		reloadModel = false;
