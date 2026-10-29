@@ -3978,9 +3978,9 @@ void idPlayer::UpdateConditions( void ) {
 	float floatdmg = 0;
 	if (impact > 400.0f) {
 		floatdmg = ((impact - 400.0f) * 0.25f);
-		gameLocal.Printf("player.cpp float damage test %.1f\n", floatdmg);
+		//gameLocal.Printf("player.cpp float damage test %.1f\n", floatdmg);
 		int dmg = (int)floatdmg;
-		gameLocal.Printf("player.cpp int damage test %d\n", dmg);
+		//gameLocal.Printf("player.cpp int damage test %d\n", dmg);
 		if (dmg > 0) {
 //			health -= dmg;
 			Damage(NULL, NULL, idVec3(0, 0, 0), "damage_impact", (float)dmg, 0);
@@ -3990,7 +3990,7 @@ void idPlayer::UpdateConditions( void ) {
 	//checks ult freeze time
 	UpdateFreeze();
 
-	gameLocal.Printf("time %d frozenUntil %d\n", gameLocal.time, gameLocal.ModFreezeMS);
+	//gameLocal.Printf("time %d frozenUntil %d\n", gameLocal.time, gameLocal.ModFreezeMS);
  	pfl.dead	= ( health <= 0 );
 }
 
@@ -4038,7 +4038,7 @@ void idPlayer::unfreeze(void) {
 }
 
 void idPlayer::PushEnemies() {
-	float strength = 500 * (physicsObj.GetTemperature() - 10);
+	float strength = 1000 * (physicsObj.GetTemperature() - 10);
 	idEntity* list[MAX_GENTITIES];
 	idVec3		origin = physicsObj.GetOrigin();
 	idVec3		up = -physicsObj.GetGravityNormal();
