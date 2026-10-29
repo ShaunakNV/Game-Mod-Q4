@@ -1535,6 +1535,8 @@ void idPlayer::Init( void ) {
 	ult1Check = false;
 	ult2Check = false;
 	ult2Hits = 0;
+	ult3Check = false;
+	ult3Damage = 0;
 
 	influenceFov			= 0;
 	influenceActive			= 0;
@@ -4105,7 +4107,12 @@ void idPlayer::LungeMelee(void) {
 		if (hit && hit != this) {
 			float close = 1.0f - tr.fraction;
 			float boost = 2.0f + 3.0f * close;
-			hit->Damage(this, this, viewAxis[0], "damage_melee", (physicsObj.GetTemperature() / 4.0) * boost, 0);
+			if (tr.fraction > 0.4f) {
+				hit->Damage(this, this, viewAxis[0], "damage_melee", (physicsObj.GetTemperature() / 4.0) * boost, 0);
+			}
+			else {
+				hit->Damage(this, this, viewAxis[0], "ModBlowup", 500.0f, 0);
+			}
 			invulnerableTime = gameLocal.time + 500;
 			physicsObj.SetTemperature(idMath::ClampFloat(0.0f, 100.0f, physicsObj.GetTemperature() + 40.0f) );
 		}
@@ -4151,7 +4158,12 @@ void idPlayer::SidedashMelee(void) {
 			d = idMath::ClampFloat(-1.0f, 1.0f, d);
 			float close = (d - 1.0f) / -2.0f;
 			float boost = 1.0f + 4.0f * close;
-			hit->Damage(this, this, viewAxis[0], "damage_melee", (physicsObj.GetTemperature() / 4.0) * boost, 0);
+			if (d > -0.5f) {
+				hit->Damage(this, this, viewAxis[0], "damage_melee", (physicsObj.GetTemperature() / 4.0) * boost, 0);
+			}
+			else {
+				hit->Damage(this, this, viewAxis[0], "ModBlowup", 500.0f, 0);
+			}
 			invulnerableTime = gameLocal.time + 500;
 			physicsObj.SetTemperature(idMath::ClampFloat(0.0f, 100.0f, physicsObj.GetTemperature() + 40.0f));
 		}
@@ -4258,15 +4270,15 @@ void idPlayer::leftClick(int abil) {
 	case 5:
 		break;
 	case 6: {
-		idVec3	start6;
-		idVec3	end6;
-		trace_t	tr6;
+		idVec3	start;
+		idVec3	end;
+		trace_t	tr;
 
-		start6 = GetEyePosition();
-		end6 = start6 + viewAngles.ToForward() * 80.0f;
-		gameLocal.TracePoint(this, tr6, start6, end6, MASK_SHOT_BOUNDINGBOX, this);
-		if (tr6.fraction < 1.0f) {
-			idEntity* hit = gameLocal.entities[tr6.c.entityNum];
+		start = GetEyePosition();
+		end = start + viewAngles.ToForward() * 80.0f;
+		gameLocal.TracePoint(this, tr, start, end, MASK_SHOT_BOUNDINGBOX, this);
+		if (tr.fraction < 1.0f) {
+			idEntity* hit = gameLocal.entities[tr.c.entityNum];
 			if (hit && hit != this) {
 				hit->Damage(this, this, viewAxis[0], "damage_melee", 800.0f, 0);
 			}
@@ -4274,20 +4286,38 @@ void idPlayer::leftClick(int abil) {
 		break;
 	}
 	case 7: {
-		idVec3	start7;
-		idVec3	end7;
-		trace_t	tr7;
-		start7 = GetEyePosition();
-		end7 = start7 + viewAngles.ToForward() * 2000.0f;
-		gameLocal.TracePoint(this, tr7, start7, end7, MASK_SHOT_BOUNDINGBOX, this);
-		if (tr7.fraction < 1.0f) {
-			idEntity* hit = gameLocal.entities[tr7.c.entityNum];
-			if (hit && hit != this) {
+		idVec3	start;
+		idVec3	end;
+		trace_t	tr;
+		start = GetEyePosition();
+		end = start + viewAngles.ToForward() * 5000.0f;
+		gameLocal.TracePoint(this, tr, start, end, MASK_SHOT_BOUNDINGBOX, this);
+		if (tr.fraction < 1.0f) {
+			idEntity* hit = gameLocal.entities[tr.c.entityNum];
+			if (hit && hit != this && hit->IsType(idActor::GetClassType())) {
 				hit->Damage(this, this, viewAxis[0], "damage_melee", 800.0f, 0);
 				ult2Hits += 1;
 			}
 		}
 		break;
+	}
+	case 8: {
+		idVec3	start;
+		idVec3	end;
+		trace_t	tr;
+		start = GetEyePosition();
+		end = start + viewAngles.ToForward() * 5000.0f;
+		gameLocal.TracePoint(this, tr, start, end, MASK_SHOT_BOUNDINGBOX, this);
+		if (tr.fraction < 1.0f) {
+			idEntity* hit = gameLocal.entities[tr.c.entityNum];
+			if (hit && hit != this) {
+				hit->Damage(this, this, viewAxis[0], "damage_melee", ult3Damage, 0);
+				ult3Check = false;
+				abilitySelect = 1;
+				unfreezeCount = 0;
+				physicsObj.SetUltimate(0);
+			}
+		}
 	}
 	}
 }
@@ -4304,6 +4334,9 @@ void idPlayer::rightClick(int abil) {
 		break;
 	case 4:
 		Superjump();
+	case 8:
+		ult3Damage += 200;
+		Damage(NULL, NULL, idVec3(0, 0, 0), "damage_impact", 10, 0);
 	}
 }
 
@@ -9050,7 +9083,13 @@ void idPlayer::PerformImpulse( int impulse ) {
 		}
 
  		case IMPULSE_51: {
- 			
+			if (physicsObj.GetUltimate() == 100) {
+				abilitySelect = 8;
+				ult3Check = true;
+				FreezeGame(20000);
+				gameLocal.CountdownMS = gameLocal.time + 20000;
+				physicsObj.SetUltimate(0);
+			}
  			break;
  		}
 	} 
@@ -9451,6 +9490,11 @@ void idPlayer::Move( void ) {
 		}
 		ult2Check = false;
 		abilitySelect = 1;
+		physicsObj.SetUltimate(0);
+	}
+	if (ult3Check == true && gameLocal.time > gameLocal.Ult3timeMS) {
+		ult3Check = false;
+		ult3Damage = 0;
 		physicsObj.SetUltimate(0);
 	}
 	physicsObj.SetPlayerInput( usercmd, viewAngles );

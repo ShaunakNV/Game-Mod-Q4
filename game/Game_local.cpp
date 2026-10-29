@@ -249,6 +249,7 @@ void idGameLocal::Clear( void ) {
 	ModFreezeMS = 0;
 	ForwardUntilMS = 0;			//forces the player to move forward until
 	CountdownMS = 0;
+	Ult3timeMS = 0;
 	numClients = 0;
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		userInfo[i].Clear();
@@ -1420,6 +1421,7 @@ void idGameLocal::LoadMap( const char *mapName, int randseed ) {
 	ModFreezeMS = 0;
 	ForwardUntilMS = 0;
 	CountdownMS = 0;
+	Ult3timeMS = 0;
 // RITUAL END
 
 	vacuumAreaNum = -1;		// if an info_vacuum is spawned, it will set this

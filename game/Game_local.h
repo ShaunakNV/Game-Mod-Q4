@@ -391,6 +391,7 @@ public:
 	int						ModFreezeMS;
 	int						ForwardUntilMS;			//forces the player to move forward until
 	int						CountdownMS;			//countdown for player to hit enemies
+	int						Ult3timeMS;
 	int						msec;					// time since last update in milliseconds
 	int						mHz;					// hertz
 

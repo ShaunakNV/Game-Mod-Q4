@@ -917,6 +917,8 @@ private:
 	int						superjumpEngage;
 	int						invulnerableTime;
 	bool					freezeNotarget;
+	int						ult3Damage;
+	bool					ult3Check;
 	int						ult2Hits;
 	bool					ult2Check;
 	bool					ult1Check;
