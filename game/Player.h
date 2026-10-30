@@ -478,7 +478,7 @@ public:
 	void					setWaveSpawning(bool b);
 	void					unfreeze(void);
 	void					PushEnemies(void);
-	void					Knockback(void);
+	void					KnockbackMod(void);
 	void					LifeSteal(void);
 	void					BasicMelee(void);
 	void					Backdash(void);

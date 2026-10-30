@@ -1577,15 +1577,6 @@ void idPlayer::Init( void ) {
 
 	// restore persistent data
 	RestorePersistantInfo();
-	int blasterSlot = SlotForWeapon("weapon_blaster");
-	int gauntletSlot = SlotForWeapon("weapon_gauntlet");
-	if (gauntletSlot >= 0) {
-		inventory.weapons |= (1 << gauntletSlot);   
-		if (blasterSlot >= 0 && blasterSlot != gauntletSlot) {
-			inventory.Drop(spawnArgs, "weapon_blaster", blasterSlot);
-		}
-		idealWeapon = gauntletSlot;   
-	}
 
 	bobCycle	= 0;
 
@@ -4057,10 +4048,10 @@ void idPlayer::unfreeze(void) {
 }
 
 void idPlayer::PushEnemies() {
-	float strength = 500 * (physicsObj.GetTemperature() - 10);
+	float strength = 2000 * (physicsObj.GetTemperature() - 10);
 	idEntity* list[MAX_GENTITIES];
-	idVec3		origin = physicsObj.GetOrigin();
-	idVec3		up = -physicsObj.GetGravityNormal();
+	idVec3 origin = physicsObj.GetOrigin();
+	idVec3 up = -physicsObj.GetGravityNormal();
 	int num = gameLocal.EntitiesWithinRadius(origin, 1500.0f, list, MAX_GENTITIES);
 	for (int i = 0; i < num; i++) {
 		idEntity* ent = list[i];
@@ -4078,12 +4069,34 @@ void idPlayer::PushEnemies() {
 		}
 		dir += up * 0.3f;
 		dir.Normalize();
+		float mass = ent->GetPhysics()->GetMass();
 			ent->GetPhysics()->ApplyImpulse(0, ent->GetPhysics()->GetOrigin(), dir * strength);
 	}
 	physicsObj.SetTemperature(10);
 }
-void idPlayer::Knockback(void) {
-
+void idPlayer::KnockbackMod(void) {
+	idVec3	start;
+	idVec3	end;
+	trace_t	tr;
+	idVec3 origin = physicsObj.GetOrigin();
+	start = GetEyePosition();
+	end = start + viewAngles.ToForward() * 200.0f;
+	gameLocal.TracePoint(this, tr, start, end, MASK_SHOT_BOUNDINGBOX, this);
+	if (tr.fraction < 1.0f) {
+		idEntity* hit = gameLocal.entities[tr.c.entityNum];
+		if (hit && hit != this) {
+			idVec3 up = -physicsObj.GetGravityNormal();
+			idVec3 dir = hit->GetPhysics()->GetOrigin() - origin;
+			dir -= (dir * up) * up;
+			if (dir.Normalize() < 0.01f) {
+				dir = viewAxis[0];
+			}
+			dir += up * 0.3f;
+			dir.Normalize();
+			float mass = hit->GetPhysics()->GetMass();
+			hit->GetPhysics()->ApplyImpulse(0, hit->GetPhysics()->GetOrigin(), dir * 5000.0f * mass);
+		}
+	}
 }
 
 void idPlayer::LifeSteal(void) {
@@ -4145,6 +4158,16 @@ void idPlayer::LungeMelee(void) {
 		if (hit && hit != this) {
 			float close = 1.0f - tr.fraction;
 			float boost = 2.0f + 3.0f * close;
+			idVec3 up = -physicsObj.GetGravityNormal();
+			idVec3 dir = hit->GetPhysics()->GetOrigin() - physicsObj.GetOrigin();
+			dir -= (dir * up) * up;
+			if (dir.Normalize() < 0.01f) {
+				dir = viewAxis[0];
+			}
+			dir += up * 0.3f;
+			dir.Normalize();
+			float mass = hit->GetPhysics()->GetMass();
+			hit->GetPhysics()->ApplyImpulse(0, hit->GetPhysics()->GetOrigin(), dir * 3000.0f * mass);
 			if (tr.fraction > 0.4f) {
 				hit->Damage(this, this, viewAxis[0], "damage_melee", (physicsObj.GetTemperature() / 4.0) * boost, 0);
 			}
@@ -4196,6 +4219,15 @@ void idPlayer::SidedashMelee(void) {
 			d = idMath::ClampFloat(-1.0f, 1.0f, d);
 			float close = (d - 1.0f) / -2.0f;
 			float boost = 1.0f + 4.0f * close;
+			idVec3 dir = hit->GetPhysics()->GetOrigin() - physicsObj.GetOrigin();
+			dir -= (dir * up) * up;
+			if (dir.Normalize() < 0.01f) {
+				dir = viewAxis[0];
+			}
+			dir += up * 0.3f;
+			dir.Normalize();
+			float mass = hit->GetPhysics()->GetMass();
+			hit->GetPhysics()->ApplyImpulse(0, hit->GetPhysics()->GetOrigin(), dir * 3000.0f * mass);
 			if (d > -0.5f) {
 				hit->Damage(this, this, viewAxis[0], "damage_melee", (physicsObj.GetTemperature() / 4.0) * boost, 0);
 			}
@@ -4358,10 +4390,10 @@ void idPlayer::leftClick(int abil) {
 		}
 	}
 	case 9:
-		LifeSteal();
+		KnockbackMod();
 		break;
 	case 10:
-		Knockback();
+		LifeSteal();
 		break;
 	}
 }
